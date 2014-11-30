@@ -116,10 +116,6 @@ def cross_validate(features, outputs, model, k=10):
     @params k int number of folds
     @return float average accuracy
     """ 
-    # get features & classes
-    features = training[:,:-1]
-    outputs = training[:,-1]
-
     # do k-folds cross validation
     scores = cross_validation.cross_val_score(model,
             features,
