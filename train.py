@@ -18,81 +18,18 @@ from sklearn import cluster
 # TODO: fine tune model
 # TODO: implement function for 1,0 if crime will happen or not
 
-def get_training(csv_path, binary_feature=True, binary_output=True, category_911="all"):
+def get_training(txt_path):
     """
-    Construct training set from input csv file and outputs a Nxd feature vector and
-    Nx1 output value. The features and outputs can either represent binary 1,0 existence
-    of categories of crimes, or a count of categories of crimes. These can be set
-    using the binary_feature, binary_out parameters.
-
-    The category of 911 crimes predicted can be set using category_911. It can be set
-    to a specific category (like 'ASSAULT') or to "all", in which case it will return
-    1,0 if any 911 report existed (binary output) or a count of all crimes (count output).
-
-    @params csv_path string path to csv file 
-    @params binary_feature boolean to have binary or count features
-    @params binary_output boolean to have binary of count output
-    @params 911_category string category of 911 crime to predict existence of 
-    @return Nxd np.array feature vectors, Nx1 np.array class output
-    """
-    load_start = time.time()
-    df = pd.io.parsers.read_csv(csv_path)
-    load_end = time.time()
-    print("Time to load %s: %f"%(csv_path, load_end-load_start))
-    num_rows = df.shape[0]
-   
-    stat_start = time.time()
-    # get statistics to initialize numpy array
-    location_bins = set()
-    category_bins = set()
-    for i in xrange(num_rows): 
-        try:
-            rows = eval(df.iloc[i]['311-reports'])
-        except NameError:
-            print("Error parsing row %d. Moving on..."%i)
-        for r in rows:
-            category_bins.add(r['Category']) 
-    stat_end = time.time()
-    print("Time to extract initial statistics: %f"%(stat_end-stat_start))
-
-    # initialize numpy vector
-    feat_start = time.time()
-    feature_vectors = np.zeros([num_rows, len(category_bins)])
-    output_vector = np.zeros([num_rows])
-    invalid_rows = []
-    for i in xrange(num_rows):
-        print(i)
-        # get features
-        if binary_feature:
-            features = get_binary_features(df.iloc[i], category_bins)
-        else:
-            features = get_count_features(df.iloc[i], category_bins)
-
-
-        # check if 911-report field is nan
-        row_911 = df.iloc[i]['911-reports']
-        if math.isnan(row_911):
-            print("Found nan 911 report value at index %d. Removing from training set"%i)
-            invalid_rows.append(i)
-            continue
-
-        # get output class/value
-        if binary_output:
-            output = get_binary_output(df.iloc[i], category_911)
-        else:
-            output = get_count_output(df.iloc[i], category_911)
-    
-        # insert values into feature and output vectors
-        feature_vectors[i] = features
-        output_vector[i] = output
-
-    feat_end = time.time()
-    print("Time to extract features: %f"%(feat_end - feat_start))
-    return np.delete(feature_vectors,invalid_rows) , np.delete(output_vector, invalid_rows)
+    Get features and output values
+    """ 
+    training = np.loadtxt(txt_path)
+    features, output = training[:,:-1], training[:,-1]
+    return features, output
 
 def get_binary_features(df_row, all_categories):
     """
     Takes in a row of a DataFrame and returns a binary feature vector
+    where 1,0 represents the existence of a certain crime.
     @params df_row pd.Series row from pd.DataFrame
     @params all_categories set of all 311 categories
     @return 1xd np.array
@@ -200,8 +137,6 @@ def fine_tune(features, outputs, model):
     elif isinstance(model, svm.SVR) or isinstance(model, svm.SVC):
         params_grid = [
                 {'C': [1, 10, 100, 1000], 'kernel': ['linear']},
-                {'C': [1, 10, 100, 1000], 'gamma': [10**-2, 10**-3], 'kernel': ['rbf']},
-                {'C': [1, 10, 100, 1000], 'degree': [1, 2, 3, 4, 5], 'gamma': [10**-2, 10**-3] ,'kernel': ['poly']}
                 ]
     # kmeans
     elif isinstance(model, cluster.KMeans):
@@ -234,7 +169,11 @@ def cross_validate(features, outputs, model, k=10):
     # get average accuracy
     return np.average(scores)
 
-train_features, train_class = get_training('./joined_data.csv',
-        binary_feature=True,
-        binary_output=True,
-        category_911="all")
+
+train_path="data/joined_matrix.txt"
+features, output = get_training(train_path)
+
+model = svm.SVR()
+#optimal_model = fine_tune(features, output, model)
+#avg_accuracy = cross_validate(features, output, optimal_model) 
+#print(avg_accuracy) 
