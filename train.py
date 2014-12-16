@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from pandas import Timestamp
-import pdb
 import time
 import math
 
@@ -103,7 +102,7 @@ def get_count_output(df_row, category_911):
     # get number of reports of specified category
     return sum([1 for r in reports if r['Category'].lower() == category_911.lower()])
 
-def fine_tune(features, outputs, model):
+def fine_tune(features, outputs, model, verbose=3, params_grid=None):
     """
     Fine tune a classifier by doing grid search over possible parameters.
     Return an fine-tuned model,
@@ -114,39 +113,42 @@ def fine_tune(features, outputs, model):
     @return sklearn fine-tuned model
     """
     ### REGRESSION METHODS ###
-    # linear regression 
-    if isinstance(model, linear_model.LinearRegression):
-        params_grid = [
-                {'fit_intercept': [True, False], 'normalize': [True, False]}
-                ]
-    # ridge linear regression 
-    elif isinstance(model, linear_model.Ridge):
-        params_grid = [
-                {'alpha': [10**-8, 10**-5, 10**-3, 10**-1, 0.5, 1] }
-                ]
+    if params_grid == None:
+        # linear regression 
+        if isinstance(model, linear_model.LinearRegression):
+            params_grid = [
+                    {'fit_intercept': [True, False], 'normalize': [True, False]}
+                    ]
+        # ridge linear regression 
+        elif isinstance(model, linear_model.Ridge):
+            params_grid = [
+                    {'alpha': [10**-8, 10**-5, 10**-3, 10**-1, 0.5, 1] }
+                    ]
     
-    ### CLASSIFICATION METHODS ###
-    # logistic regression
-    elif isinstance(model, linear_model.LogisticRegression):
-        params_grid = [
-                {'C': [1, 10, 100, 1000]}
-                ]
+        ### CLASSIFICATION METHODS ###
+        # logistic regression
+        elif isinstance(model, linear_model.LogisticRegression):
+            params_grid = [
+                    {'C': [1, 10, 100, 1000]}
+                    ]
 
-    ### GENERAL METHODS ###
-    # SVR or SVM
-    elif isinstance(model, svm.SVR) or isinstance(model, svm.SVC):
-        params_grid = [
-                {'C': [1, 10, 100, 1000], 'kernel': ['linear']},
-                ]
-    # kmeans
-    elif isinstance(model, cluster.KMeans):
-        params_grid = [
-                {'n_init': [10, 50, 100, 500]}
-                ] 
+        ### GENERAL METHODS ###
+        # SVR or SVM
+        elif isinstance(model, svm.SVR) or isinstance(model, svm.SVC):
+        	# n=10000, C=10, gamma=0.1, kernel=rbf: [0.454920, 0.384266, 0.453706]
+            params_grid = [
+                   {'C': [1, 10, 100, 1000], 'gamma':[0.00001, 0.0001, 0.001, 0.01],  'kernel': ['rbf', 'poly']},
+                    ]
+        # kmeans
+        elif isinstance(model, cluster.KMeans):
+            params_grid = [
+                    {'n_init': [10, 50]}
+                    ] 
         
-    optimized_model = grid_search.GridSearchCV(model, params_grid) 
+    optimized_model = grid_search.GridSearchCV(model, params_grid, verbose=verbose) 
     optimized_model.fit(features, outputs)
     return optimized_model
+
 
 def cross_validate(features, outputs, model, k=10):
     """
@@ -168,12 +170,3 @@ def cross_validate(features, outputs, model, k=10):
 
     # get average accuracy
     return np.average(scores)
-
-
-train_path="data/joined_matrix.txt"
-features, output = get_training(train_path)
-
-model = svm.SVR()
-#optimal_model = fine_tune(features, output, model)
-#avg_accuracy = cross_validate(features, output, optimal_model) 
-#print(avg_accuracy) 
